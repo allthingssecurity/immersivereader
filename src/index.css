@@ -19,7 +19,7 @@
   --panel-solid: #121826;
   --border: rgba(255, 255, 255, 0.08);
   --border-hover: rgba(255, 255, 255, 0.15);
-  
+
   /* Accent gradient */
   --accent: #3b82f6;
   --accent-hover: #60a5fa;
@@ -27,22 +27,22 @@
   --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
   --gradient-secondary: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 100%);
   --gradient-warm: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
-  
+
   /* Glass effect */
   --glass-bg: rgba(15, 21, 32, 0.7);
   --glass-border: rgba(255, 255, 255, 0.1);
   --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  
+
   /* Focus & highlight */
   --focus-ring: 0 0 0 2px var(--accent-glow);
   --highlight-bg: rgba(59, 130, 246, 0.15);
   --spotlight-shadow: 0 0 60px 20px rgba(59, 130, 246, 0.1);
-  
+
   /* Transitions */
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
-  
+
   /* Typography defaults */
   --measure: 70ch;
   --font-size: 18px;
@@ -60,17 +60,17 @@
   --panel-solid: #ffffff;
   --border: rgba(0, 0, 0, 0.08);
   --border-hover: rgba(0, 0, 0, 0.15);
-  
+
   --accent: #2563eb;
   --accent-hover: #3b82f6;
   --accent-glow: rgba(37, 99, 235, 0.3);
   --gradient-primary: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
   --gradient-secondary: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
-  
+
   --glass-bg: rgba(255, 255, 255, 0.75);
   --glass-border: rgba(0, 0, 0, 0.08);
   --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  
+
   --highlight-bg: rgba(37, 99, 235, 0.1);
   --spotlight-shadow: 0 0 60px 20px rgba(37, 99, 235, 0.08);
 }
@@ -84,17 +84,17 @@
   --panel-solid: #efe7d5;
   --border: rgba(61, 46, 31, 0.1);
   --border-hover: rgba(61, 46, 31, 0.2);
-  
+
   --accent: #b45309;
   --accent-hover: #d97706;
   --accent-glow: rgba(180, 83, 9, 0.3);
   --gradient-primary: linear-gradient(135deg, #b45309 0%, #dc2626 100%);
   --gradient-secondary: linear-gradient(135deg, #ca8a04 0%, #b45309 100%);
-  
+
   --glass-bg: rgba(245, 240, 230, 0.8);
   --glass-border: rgba(61, 46, 31, 0.1);
   --glass-shadow: 0 8px 32px rgba(61, 46, 31, 0.15);
-  
+
   --highlight-bg: rgba(180, 83, 9, 0.1);
   --spotlight-shadow: 0 0 60px 20px rgba(180, 83, 9, 0.08);
 }
@@ -102,7 +102,9 @@
 /* ----------------------
    Base Styles
    ---------------------- */
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   background: var(--bg);
   color: var(--fg);
@@ -185,7 +187,8 @@ body {
 /* ----------------------
    Inputs & Selects
    ---------------------- */
-.input, .select {
+.input,
+.select {
   padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
   border-radius: 0.5rem;
@@ -195,7 +198,8 @@ body {
   transition: all var(--transition-fast);
 }
 
-.input:focus, .select:focus {
+.input:focus,
+.select:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: var(--focus-ring);
@@ -319,8 +323,13 @@ input[type="checkbox"]:checked::after {
 }
 
 @keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 /* Circular progress */
@@ -346,23 +355,19 @@ input[type="checkbox"]:checked::after {
   left: 0;
   right: 0;
   pointer-events: none;
-  background: linear-gradient(
-    to bottom,
-    rgba(59, 130, 246, 0.05),
-    rgba(59, 130, 246, 0.12),
-    rgba(59, 130, 246, 0.05)
-  );
+  background: linear-gradient(to bottom,
+      rgba(59, 130, 246, 0.05),
+      rgba(59, 130, 246, 0.12),
+      rgba(59, 130, 246, 0.05));
   transition: top var(--transition-fast), height var(--transition-fast);
   z-index: 10;
 }
 
 .theme-sepia .ruler {
-  background: linear-gradient(
-    to bottom,
-    rgba(180, 83, 9, 0.05),
-    rgba(180, 83, 9, 0.12),
-    rgba(180, 83, 9, 0.05)
-  );
+  background: linear-gradient(to bottom,
+      rgba(180, 83, 9, 0.05),
+      rgba(180, 83, 9, 0.12),
+      rgba(180, 83, 9, 0.05));
 }
 
 /* Spotlight focus effect */
@@ -371,11 +376,9 @@ input[type="checkbox"]:checked::after {
   inset: 0;
   pointer-events: none;
   z-index: 5;
-  background: radial-gradient(
-    ellipse 100% 200px at 50% var(--spotlight-y, 50%),
-    transparent 0%,
-    rgba(0, 0, 0, 0.4) 100%
-  );
+  background: radial-gradient(ellipse 100% 200px at 50% var(--spotlight-y, 50%),
+      transparent 0%,
+      rgba(0, 0, 0, 0.4) 100%);
   opacity: 0;
   transition: opacity var(--transition-slow);
 }
@@ -428,8 +431,13 @@ input[type="checkbox"]:checked::after {
    Animations
    ---------------------- */
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes fadeInUp {
@@ -437,6 +445,7 @@ input[type="checkbox"]:checked::after {
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -448,6 +457,7 @@ input[type="checkbox"]:checked::after {
     opacity: 0;
     transform: translateX(100%);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -459,6 +469,7 @@ input[type="checkbox"]:checked::after {
     opacity: 0;
     transform: translateX(-100%);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -466,19 +477,41 @@ input[type="checkbox"]:checked::after {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
 }
 
 @keyframes glow {
-  0%, 100% { box-shadow: 0 0 20px var(--accent-glow); }
-  50% { box-shadow: 0 0 40px var(--accent-glow); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px var(--accent-glow);
+  }
+
+  50% {
+    box-shadow: 0 0 40px var(--accent-glow);
+  }
 }
 
 @keyframes gradientShift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 .animate-fade-in {
@@ -581,7 +614,7 @@ input[type="checkbox"]:checked::after {
   height: 100%;
   padding: 2rem;
   text-align: center;
-  background: 
+  background:
     radial-gradient(ellipse at top, var(--accent-glow), transparent 60%),
     var(--bg);
 }
@@ -649,12 +682,10 @@ input[type="checkbox"]:checked::after {
    Loading States
    ---------------------- */
 .skeleton {
-  background: linear-gradient(
-    90deg,
-    var(--border) 25%,
-    var(--border-hover) 50%,
-    var(--border) 75%
-  );
+  background: linear-gradient(90deg,
+      var(--border) 25%,
+      var(--border-hover) 50%,
+      var(--border) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: 0.25rem;
@@ -670,5 +701,256 @@ input[type="checkbox"]:checked::after {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ----------------------
+   Mobile Responsive Styles
+   ---------------------- */
+
+/* Mobile-first adjustments */
+@media (max-width: 768px) {
+
+  /* Increase touch targets */
+  .btn {
+    min-height: 44px;
+    padding: 0.75rem 1rem;
+  }
+
+  .btn-ghost {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Header adjustments for hamburger */
+  header {
+    padding-left: 3.5rem !important;
+  }
+
+  /* Hide session timer on mobile */
+  .stat-badge {
+    display: none;
+  }
+
+  /* Zen mode button */
+  header .btn-ghost[data-tooltip="Zen Mode (F)"],
+  header .btn-ghost[data-tooltip="Keyboard Shortcuts"] {
+    display: none;
+  }
+
+  /* Readable typography */
+  :root {
+    --font-size: 16px;
+    --line-height: 1.6;
+    --measure: 100%;
+  }
+
+  /* Reading content padding */
+  .reading-content {
+    padding: 1rem !important;
+  }
+
+  /* Welcome screen */
+  .welcome-screen {
+    padding: 1rem;
+  }
+
+  .welcome-title {
+    font-size: 1.75rem;
+  }
+
+  .welcome-subtitle {
+    font-size: 1rem;
+  }
+
+  /* Reader toolbar stacking */
+  .reader-toolbar {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  /* Stats panel - horizontal scroll */
+  .stats-panel {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Action bar - horizontal scroll */
+  .action-bar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 0.5rem;
+  }
+
+  /* Hide keyboard shortcuts in action bar */
+  .kbd-hints {
+    display: none;
+  }
+
+  /* Cards - full width */
+  .card {
+    margin-bottom: 0.5rem;
+  }
+
+  /* Progress ring smaller */
+  .progress-ring {
+    transform: scale(0.75) rotate(-90deg);
+  }
+
+  /* Tooltips - hide on mobile (they don't work well with touch) */
+  .tooltip::after {
+    display: none;
+  }
+
+  /* Search input larger */
+  .input {
+    min-height: 44px;
+    font-size: 16px;
+    /* Prevents iOS zoom */
+  }
+
+  /* Select larger */
+  .select {
+    min-height: 40px;
+    font-size: 16px;
+  }
+
+  /* Tab buttons larger touch area */
+  .tab-button {
+    min-height: 48px;
+  }
+
+  /* Zen mode adjustments */
+  .zen-mode .reading-content {
+    padding: 1.5rem 1rem;
+  }
+
+  .zen-mode button {
+    top: 0.5rem;
+    right: 0.5rem;
+  }
+
+  /* Bottom progress bar thicker */
+  .bottom-progress {
+    height: 4px;
+  }
+}
+
+/* Small phones */
+@media (max-width: 375px) {
+  :root {
+    --font-size: 15px;
+  }
+
+  .welcome-title {
+    font-size: 1.5rem;
+  }
+
+  .btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+  }
+}
+
+/* Tablets */
+@media (min-width: 769px) and (max-width: 1024px) {
+  aside {
+    width: 260px;
+  }
+
+  :root {
+    --measure: 60ch;
+  }
+}
+
+/* Touch-friendly scrollbar on mobile */
+@media (pointer: coarse) {
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  /* Larger tap targets for delete buttons */
+  .group .delete-btn,
+  .group button[aria-label*="Remove"] {
+    min-width: 44px;
+    min-height: 44px;
+    opacity: 1 !important;
+  }
+}
+
+/* Landscape phone */
+@media (max-width: 896px) and (orientation: landscape) {
+  header {
+    height: 48px;
+  }
+
+  .action-bar {
+    padding: 0.25rem 0.5rem;
+  }
+
+  .reading-content {
+    padding: 0.5rem 1rem !important;
+  }
+}
+
+/* Safe area insets for notched phones */
+@supports (padding: env(safe-area-inset-left)) {
+  aside {
+    padding-left: env(safe-area-inset-left);
+  }
+
+  .reading-content {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+
+  header {
+    padding-left: max(3.5rem, env(safe-area-inset-left));
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Dark mode adjustments for better OLED */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #000000;
+    --bg-secondary: #0a0a0a;
+  }
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Print styles */
+@media print {
+
+  aside,
+  header,
+  .action-bar,
+  .btn,
+  .progress-bar {
+    display: none !important;
+  }
+
+  .reading-content {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
 }

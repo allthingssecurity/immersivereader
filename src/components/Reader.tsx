@@ -202,28 +202,26 @@ export function Reader({ docId, store, onOpenPdfView, spotlightMode = false }: P
   return (
     <div className="h-full overflow-hidden flex flex-col bg-[var(--bg)]">
       {/* Enhanced toolbar */}
-      <div className="glass border-b border-[var(--border)] px-5 py-3 flex items-center gap-4 animate-fade-in">
-        <div className="flex items-center gap-3 min-w-0">
-          <span className="font-medium truncate max-w-[200px] text-[var(--fg)]">{doc?.name}</span>
-          <span className="stat-badge">
+      <div className="reader-toolbar glass border-b border-[var(--border)] px-3 md:px-5 py-2 md:py-3 flex items-center gap-2 md:gap-4 animate-fade-in">
+        <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
+          <span className="font-medium truncate max-w-[120px] md:max-w-[200px] text-[var(--fg)] text-sm md:text-base">{doc?.name}</span>
+          <span className="stat-badge hidden md:inline-flex">
             <svg className="stat-badge-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            {doc?.pages ?? '—'} pages
+            {doc?.type === 'url' ? 'Web Article' : `${doc?.pages ?? '—'} pages`}
           </span>
-          <span className={`stat-badge ${doc?.extractionStatus === 'done' ? 'text-green-500' : ''}`}>
+          <span className={`stat-badge hidden md:inline-flex ${doc?.extractionStatus === 'done' ? 'text-green-500' : ''}`}>
             {doc?.extractionStatus === 'done' ? '✓ Ready' : doc?.extractionStatus === 'processing' ? '⏳ Processing...' : '○ Pending'}
           </span>
         </div>
 
-        <div className="flex-1" />
-
         {/* Reading progress */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
           <CircularProgress progress={progress} />
           <div className="text-sm">
             <div className="font-medium text-[var(--fg)]">{Math.round(progress * 100)}%</div>
-            <div className="text-xs text-[var(--fg-muted)]">
+            <div className="text-xs text-[var(--fg-muted)] hidden sm:block">
               <TimeEstimate words={Math.max(1, totalWords - wordsRead)} wpm={wpm} />
             </div>
           </div>
@@ -231,7 +229,7 @@ export function Reader({ docId, store, onOpenPdfView, spotlightMode = false }: P
 
         {/* Stats toggle */}
         <button
-          className={`btn btn-ghost ${showStats ? 'bg-[var(--highlight-bg)]' : ''}`}
+          className={`btn btn-ghost hidden sm:flex ${showStats ? 'bg-[var(--highlight-bg)]' : ''}`}
           onClick={() => setShowStats(!showStats)}
           title="Reading Statistics"
         >
@@ -245,7 +243,7 @@ export function Reader({ docId, store, onOpenPdfView, spotlightMode = false }: P
 
       {/* Stats panel (collapsible) */}
       {showStats && (
-        <div className="glass border-b border-[var(--border)] px-5 py-3 flex items-center gap-6 text-sm animate-fade-in">
+        <div className="stats-panel glass border-b border-[var(--border)] px-3 md:px-5 py-2 md:py-3 flex items-center gap-4 md:gap-6 text-sm animate-fade-in overflow-x-auto">
           <StatItem icon="📖" label="Words Read" value={wordsRead.toLocaleString()} />
           <StatItem icon="📚" label="Total Words" value={totalWords.toLocaleString()} />
           <StatItem icon="⏱️" label="Time" value={`${readingTimeElapsed}m`} />
@@ -255,20 +253,44 @@ export function Reader({ docId, store, onOpenPdfView, spotlightMode = false }: P
       )}
 
       {/* Action bar */}
-      <div className="border-b border-[var(--border)] px-5 py-2 flex items-center gap-2 bg-[var(--bg-secondary)]">
-        <button className="btn" onClick={onOpenPdfView}>
-          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-          </svg>
-          PDF View
+      <div className="action-bar border-b border-[var(--border)] px-3 md:px-5 py-2 flex items-center gap-2 bg-[var(--bg-secondary)] overflow-x-auto flex-shrink-0">
+        {/* PDF View - only show for PDF documents */}
+        {doc?.type === 'pdf' && (
+          <>
+            <button className="btn flex-shrink-0" onClick={onOpenPdfView}>
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              <span className="hidden sm:inline">PDF View</span>
+            </button>
+            <div className="w-px h-6 bg-[var(--border)] hidden sm:block" />
+          </>
+        )}
+
+        {/* Source Link - for URL documents */}
+        {doc?.type === 'url' && doc.url && (
+          <>
+            <a
+              href={doc.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn flex-shrink-0"
+            >
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+              <span className="hidden sm:inline">Source</span>
+            </a>
+            <div className="w-px h-6 bg-[var(--border)] hidden sm:block" />
+          </>
+        )}
+
+        <button className="btn flex-shrink-0" onClick={() => content && download('document.txt', toPlainText(content))}>
+          <span className="hidden sm:inline">Export</span> .txt
         </button>
-        <div className="w-px h-6 bg-[var(--border)]" />
-        <button className="btn" onClick={() => content && download('document.txt', toPlainText(content))}>
-          Export .txt
-        </button>
-        <button className="btn" onClick={() => content && download('document.md', toMarkdown(content), 'text/markdown')}>
-          Export .md
+        <button className="btn flex-shrink-0" onClick={() => content && download('document.md', toMarkdown(content), 'text/markdown')}>
+          <span className="hidden sm:inline">Export</span> .md
         </button>
         <div className="w-px h-6 bg-[var(--border)]" />
         <TtsControls
@@ -280,16 +302,16 @@ export function Reader({ docId, store, onOpenPdfView, spotlightMode = false }: P
         />
         <div className="w-px h-6 bg-[var(--border)]" />
         <button
-          className="btn btn-ghost"
+          className="btn btn-ghost flex-shrink-0"
           onClick={handleBookmark}
           title="Add Bookmark (⌘B)"
         >
           <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
           </svg>
-          Bookmark
+          <span className="hidden sm:inline">Bookmark</span>
         </button>
-        <div className="ml-auto flex items-center gap-2 text-xs text-[var(--fg-muted)]">
+        <div className="kbd-hints ml-auto hidden md:flex items-center gap-2 text-xs text-[var(--fg-muted)] flex-shrink-0">
           <span className="kbd">↑↓</span> Navigate
           <span className="kbd">Space</span> TTS
           <span className="kbd">Esc</span> Stop

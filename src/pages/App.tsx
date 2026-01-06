@@ -6,6 +6,7 @@ import { TopBar } from '@/components/TopBar';
 import { DocumentStore, StoredDoc } from '@/lib/store';
 import { extractPdf } from '@/lib/extractionClient';
 import { PdfFallback } from '@/components/PdfFallback';
+import { extractFromUrl, articleToBlocks } from '@/lib/urlExtractor';
 
 export type Theme = 'dark' | 'light' | 'sepia';
 
@@ -18,6 +19,7 @@ export function App() {
   const [toc, setToc] = useState<TocItem[]>([]);
   const [zenMode, setZenMode] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const store = useMemo(() => new DocumentStore(), []);
 
@@ -50,6 +52,7 @@ export function App() {
       if (e.key === 'Escape') {
         if (zenMode) setZenMode(false);
         if (showShortcuts) setShowShortcuts(false);
+        if (sidebarOpen) setSidebarOpen(false);
       }
       if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
         e.preventDefault();
@@ -58,7 +61,7 @@ export function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [zenMode, showShortcuts]);
+  }, [zenMode, showShortcuts, sidebarOpen]);
 
   // Listen for shortcuts dialog event
   useEffect(() => {
@@ -75,6 +78,24 @@ export function App() {
     if (doc) {
       await store.setDoc({ ...doc, extractionStatus: 'processing' });
       extractPdf(id, doc.name, opts).catch(console.error);
+    }
+  };
+
+  const onImportUrl = async (url: string) => {
+    try {
+      // Extract article content
+      const article = await extractFromUrl(url);
+      const blocks = articleToBlocks(article);
+
+      // Store in IndexedDB
+      const id = await store.importUrl(url, article.title);
+      await store.setExtracted({ id, blocks });
+
+      setCurrentId(id);
+      await refresh();
+    } catch (err) {
+      console.error('Failed to import URL:', err);
+      throw err;
     }
   };
 
@@ -99,6 +120,9 @@ export function App() {
     el.innerHTML = s;
     return el.textContent || '';
   }
+
+  // Get current doc to check type
+  const currentDoc = docs.find(d => d.id === currentId);
 
   // Zen mode render
   if (zenMode && currentId) {
@@ -130,15 +154,18 @@ export function App() {
         <LibrarySidebar
           docs={docs}
           onImport={onImport}
+          onImportUrl={onImportUrl}
           currentId={currentId}
           onSelect={setCurrentId}
           toc={toc}
           bookmarks={[]}
           onJumpToIndex={(i) => window.dispatchEvent(new CustomEvent('lumen:jump', { detail: i }))}
+          isOpen={sidebarOpen}
+          onToggle={() => setSidebarOpen(o => !o)}
         />
         <div className="flex-1 min-w-0">
           {currentId ? (
-            showPdfView ? (
+            showPdfView && currentDoc?.type === 'pdf' ? (
               <PdfFallback docId={currentId} store={store} onClose={() => setShowPdfView(false)} />
             ) : (
               <Reader docId={currentId} store={store} onOpenPdfView={() => setShowPdfView(true)} />

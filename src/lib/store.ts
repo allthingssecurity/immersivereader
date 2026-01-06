@@ -2,6 +2,8 @@
 export type StoredDoc = {
   id: string;
   name: string;
+  type: 'pdf' | 'url'; // Document source type
+  url?: string; // Original URL for URL-based documents
   pages?: number;
   size?: number;
   addedAt: number;
@@ -11,7 +13,7 @@ export type StoredDoc = {
   lastParagraphIndex?: number;
 };
 
-export type ExtractedBlock = { kind: 'p' | 'h'; level?: 1|2|3; text: string };
+export type ExtractedBlock = { kind: 'p' | 'h'; level?: 1 | 2 | 3; text: string };
 export type ExtractedContent = { id: string; blocks: ExtractedBlock[] };
 
 export type Bookmark = { id: string; docId: string; paragraphIndex: number; note?: string; createdAt: number };
@@ -51,13 +53,33 @@ export class DocumentStore {
 
   async importPdf(file: File): Promise<string> {
     const id = crypto.randomUUID();
-    const doc: StoredDoc = { id, name: file.name, size: file.size, addedAt: Date.now(), extractionStatus: 'pending' };
+    const doc: StoredDoc = { id, name: file.name, type: 'pdf', size: file.size, addedAt: Date.now(), extractionStatus: 'pending' };
     const buf = await file.arrayBuffer();
     const db = await this.dbp;
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(['docs', 'files'], 'readwrite');
       tx.objectStore('docs').put(doc);
       tx.objectStore('files').put({ id, blob: new Blob([buf], { type: file.type }) });
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+    return id;
+  }
+
+  async importUrl(url: string, title: string): Promise<string> {
+    const id = crypto.randomUUID();
+    const doc: StoredDoc = {
+      id,
+      name: title,
+      type: 'url',
+      url,
+      addedAt: Date.now(),
+      extractionStatus: 'done'
+    };
+    const db = await this.dbp;
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction('docs', 'readwrite');
+      tx.objectStore('docs').put(doc);
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
@@ -186,7 +208,7 @@ export class DocumentStore {
   async deleteDoc(id: string): Promise<void> {
     const db = await this.dbp;
     await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(['docs','files','content','bookmarks','highlights'], 'readwrite');
+      const tx = db.transaction(['docs', 'files', 'content', 'bookmarks', 'highlights'], 'readwrite');
       tx.objectStore('docs').delete(id);
       tx.objectStore('files').delete(id);
       tx.objectStore('content').delete(id);

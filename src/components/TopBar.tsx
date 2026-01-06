@@ -29,25 +29,25 @@ export function TopBar({ theme, setTheme, zenMode, onToggleZen, sessionTime = 0 
   if (zenMode) return null;
 
   return (
-    <header className="h-14 border-b border-[var(--border)] glass flex items-center px-5 gap-4 sticky top-0 z-50">
+    <header className="h-12 md:h-14 border-b border-[var(--border)] glass flex items-center px-3 md:px-5 gap-2 md:gap-4 sticky top-0 z-50">
       <Logo />
-      <div className="font-semibold tracking-tight text-[var(--fg)] text-lg">
+      <div className="font-semibold tracking-tight text-[var(--fg)] text-base md:text-lg hidden sm:block">
         Lumen Reader
       </div>
 
-      <div className="ml-auto flex items-center gap-3">
-        {/* Reading session timer */}
-        <div className="stat-badge" title="Reading session time">
+      <div className="ml-auto flex items-center gap-2 md:gap-3">
+        {/* Reading session timer - hidden on mobile */}
+        <div className="stat-badge hidden md:flex" title="Reading session time">
           <svg className="stat-badge-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span>{formatTime(time)}</span>
         </div>
 
-        {/* Zen mode toggle */}
+        {/* Zen mode toggle - hidden on mobile */}
         {onToggleZen && (
           <button
-            className="btn btn-ghost tooltip"
+            className="btn btn-ghost tooltip hidden md:flex"
             data-tooltip="Zen Mode (F)"
             onClick={onToggleZen}
             aria-label="Toggle Zen Mode"
@@ -83,9 +83,9 @@ export function TopBar({ theme, setTheme, zenMode, onToggleZen, sessionTime = 0 
           </svg>
         </div>
 
-        {/* Keyboard shortcuts hint */}
+        {/* Keyboard shortcuts hint - hidden on mobile */}
         <button
-          className="btn btn-ghost tooltip"
+          className="btn btn-ghost tooltip hidden md:flex"
           data-tooltip="Keyboard Shortcuts"
           onClick={() => window.dispatchEvent(new CustomEvent('lumen:show-shortcuts'))}
           aria-label="Show keyboard shortcuts"

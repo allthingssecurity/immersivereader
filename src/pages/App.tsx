@@ -171,7 +171,7 @@ export function App() {
               <Reader docId={currentId} store={store} onOpenPdfView={() => setShowPdfView(true)} />
             )
           ) : (
-            <WelcomeScreen />
+            <WelcomeScreen onOpenSidebar={() => setSidebarOpen(true)} />
           )}
         </div>
         <SettingsDrawer open={rightOpen} setOpen={setRightOpen} />
@@ -185,10 +185,10 @@ export function App() {
   );
 }
 
-function WelcomeScreen() {
+function WelcomeScreen({ onOpenSidebar }: { onOpenSidebar?: () => void }) {
   return (
     <div className="welcome-screen animate-fade-in-up">
-      <div className="max-w-md">
+      <div className="max-w-md px-4">
         <div className="mb-6">
           <svg width="64" height="64" viewBox="0 0 24 24" className="mx-auto">
             <defs>
@@ -210,16 +210,31 @@ function WelcomeScreen() {
         </div>
         <h1 className="welcome-title">Welcome to Lumen Reader</h1>
         <p className="welcome-subtitle">
-          Your premium, distraction-free reading environment. Import a PDF to begin your immersive reading experience.
+          Your premium, distraction-free reading environment. Import a PDF or paste any article URL to begin.
         </p>
+
+        {/* Mobile: Show prominent Get Started button */}
+        {onOpenSidebar && (
+          <button
+            onClick={onOpenSidebar}
+            className="btn btn-primary w-full justify-center text-base py-4 mb-6 md:hidden"
+          >
+            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Get Started - Import Content
+          </button>
+        )}
+
         <div className="flex flex-col gap-3 text-sm text-[var(--fg-muted)]">
           <Feature icon="✨" text="Bionic reading for faster comprehension" />
           <Feature icon="🎯" text="Focus modes to keep you on track" />
           <Feature icon="🔊" text="Read aloud with natural voices" />
-          <Feature icon="📊" text="Track your reading progress" />
+          <Feature icon="🌐" text="Read any website article" />
         </div>
         <div className="mt-8 text-xs text-[var(--fg-muted)]">
-          Press <span className="kbd">?</span> for keyboard shortcuts
+          <span className="hidden md:inline">Press <span className="kbd">?</span> for keyboard shortcuts</span>
+          <span className="md:hidden">Tap the menu ☰ to import content</span>
         </div>
       </div>
     </div>

@@ -729,9 +729,14 @@ input[type="checkbox"]:checked::after {
     padding-left: 3.5rem !important;
   }
 
-  /* Hide session timer on mobile */
-  .stat-badge {
+  /* Hide session timer in TopBar header only */
+  header>.stat-badge {
     display: none;
+  }
+
+  /* Add bottom padding for floating TTS control */
+  .reading-content {
+    padding-bottom: 5rem !important;
   }
 
   /* Zen mode button */

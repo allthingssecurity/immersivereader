@@ -396,6 +396,47 @@ export function Reader({ docId, store, onOpenPdfView, spotlightMode = false }: P
         <ReadingRuler parentRef={parentRef} focusMode={focusMode} />
       </div>
 
+      {/* Floating TTS controls for mobile */}
+      <div className="md:hidden fixed bottom-16 left-1/2 -translate-x-1/2 z-40">
+        <div className="glass rounded-full px-4 py-2 flex items-center gap-3 shadow-lg border border-[var(--border)]">
+          {!ttsActive ? (
+            <button
+              className="btn btn-primary rounded-full p-3"
+              onClick={() => speakFrom(currentIndex)}
+              aria-label="Read aloud"
+            >
+              <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </button>
+          ) : (
+            <>
+              <button
+                className="btn rounded-full p-3"
+                onClick={() => ttsRef.current?.pause()}
+                aria-label="Pause"
+              >
+                <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                </svg>
+              </button>
+              <button
+                className="btn btn-ghost rounded-full p-3 text-red-500"
+                onClick={() => { ttsRef.current?.stop(); setTtsActive(false); setTtsCurrentIndex(null); }}
+                aria-label="Stop"
+              >
+                <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M6 6h12v12H6z" />
+                </svg>
+              </button>
+            </>
+          )}
+          <div className="text-xs text-[var(--fg-muted)] hidden sm:block">
+            {ttsActive ? 'Reading...' : 'Read Aloud'}
+          </div>
+        </div>
+      </div>
+
       {/* Progress bar at bottom */}
       <div className="h-1 bg-[var(--border)]">
         <div

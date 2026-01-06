@@ -47,3 +47,4 @@ Commercial readiness (next steps)
 - Optional cloud sync of library and reading progress via user-selected storage (self-hosted).
 - Add E2E encryption if syncing.
 - Robust PDF fallback canvas viewer; advanced extraction heuristics; TOC builder.
+

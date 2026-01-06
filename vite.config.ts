@@ -11,9 +11,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
-  // When served from GitHub Pages project site, the base path must match repo name.
-  // This ensures assets resolve from /immersivereader/ in production.
-  base: '/immersivereader/',
+  // Use relative paths for GitHub Pages artifact-based deployment
+  base: './',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src')

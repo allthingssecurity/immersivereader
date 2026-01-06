@@ -6,8 +6,8 @@ export type Typography = {
   size: number;
   lineHeight: number;
   paragraphSpacing: number;
-  measure: number; // max width in ch
-  focus: 'off' | '1line' | '3lines' | 'paragraph';
+  measure: number;
+  focus: 'off' | '1line' | '3lines' | 'paragraph' | 'spotlight';
   wpm: number;
   justify: boolean;
   bionic: boolean;
@@ -16,8 +16,8 @@ export type Typography = {
 const defaultTypo: Typography = {
   family: 'serif',
   size: 18,
-  lineHeight: 1.6,
-  paragraphSpacing: 12,
+  lineHeight: 1.7,
+  paragraphSpacing: 16,
   measure: 70,
   focus: 'off',
   wpm: 220,
@@ -25,11 +25,44 @@ const defaultTypo: Typography = {
   bionic: false,
 };
 
+// Preset profiles
+const presets: Record<string, Partial<Typography>> = {
+  relaxed: {
+    family: 'serif',
+    size: 20,
+    lineHeight: 1.8,
+    paragraphSpacing: 20,
+    measure: 65,
+    focus: 'off',
+    wpm: 180,
+  },
+  focused: {
+    family: 'sans',
+    size: 18,
+    lineHeight: 1.6,
+    paragraphSpacing: 14,
+    measure: 70,
+    focus: 'paragraph',
+    bionic: true,
+  },
+  speed: {
+    family: 'sans',
+    size: 16,
+    lineHeight: 1.5,
+    paragraphSpacing: 10,
+    measure: 80,
+    focus: 'spotlight',
+    wpm: 300,
+    bionic: true,
+  },
+};
+
 export function SettingsDrawer({ open, setOpen }: { open: boolean; setOpen: (v: boolean) => void }) {
   const [typo, setTypo] = useState<Typography>(() => {
     const raw = localStorage.getItem('typography');
-    return raw ? JSON.parse(raw) as Typography : defaultTypo;
+    return raw ? { ...defaultTypo, ...JSON.parse(raw) } as Typography : defaultTypo;
   });
+  const [activeSection, setActiveSection] = useState<'typography' | 'focus' | 'tts' | 'presets'>('typography');
 
   useEffect(() => {
     localStorage.setItem('typography', JSON.stringify(typo));
@@ -39,74 +72,294 @@ export function SettingsDrawer({ open, setOpen }: { open: boolean; setOpen: (v: 
     document.documentElement.style.setProperty('--paragraph-spacing', `${typo.paragraphSpacing}px`);
     const ff = typo.family === 'serif' ? 'Georgia, Cambria, "Times New Roman", Times, serif'
       : typo.family === 'opendyslexic' ? 'OpenDyslexic, system-ui, sans-serif'
-      : 'Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial';
+        : 'Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial';
     document.documentElement.style.setProperty('--reader-font', ff);
     document.documentElement.style.setProperty('--focus-mode', typo.focus);
     document.documentElement.style.setProperty('--wpm', String(typo.wpm));
   }, [typo]);
 
+  const applyPreset = (preset: keyof typeof presets) => {
+    setTypo({ ...typo, ...presets[preset] });
+  };
+
   return (
-    <aside
-      className={`w-80 border-l border-slate-200/60 p-3 bg-[var(--panel)]/40 transition-transform duration-300 ${open ? 'translate-x-0' : 'translate-x-80'}`}
-      aria-label="Settings"
-    >
-      <div className="flex items-center mb-2">
-        <div className="font-semibold text-sm">Settings</div>
-        <button className="ml-auto text-sm underline" onClick={() => setOpen(!open)}>{open ? 'Close' : 'Open'}</button>
-      </div>
-      <div className="space-y-3 text-sm">
-        <div>
-          <label className="block text-xs text-slate-500 mb-1">Font family</label>
-          <select className="w-full border rounded px-2 py-1" value={typo.family} onChange={(e) => setTypo({ ...typo, family: e.target.value as any })}>
-            <option value="serif">Serif</option>
-            <option value="sans">Sans</option>
-            <option value="opendyslexic">OpenDyslexic</option>
-          </select>
-        </div>
-        <Slider label="Font size" min={14} max={28} step={1} value={typo.size} onChange={(v) => setTypo({ ...typo, size: v })} />
-        <Slider label="Line height" min={1.2} max={2} step={0.05} value={typo.lineHeight} onChange={(v) => setTypo({ ...typo, lineHeight: v })} />
-        <Slider label="Paragraph spacing" min={0} max={32} step={2} value={typo.paragraphSpacing} onChange={(v) => setTypo({ ...typo, paragraphSpacing: v })} />
-        <Slider label="Measure (column width in ch)" min={40} max={90} step={2} value={typo.measure} onChange={(v) => setTypo({ ...typo, measure: v })} />
+    <>
+      {/* Toggle button when closed */}
+      {!open && (
+        <button
+          className="fixed right-4 top-20 btn btn-primary shadow-lg z-40"
+          onClick={() => setOpen(true)}
+          aria-label="Open Settings"
+        >
+          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
+      )}
 
-        <div>
-          <label className="block text-xs text-slate-500 mb-1">Focus mode</label>
-          <select className="w-full border rounded px-2 py-1" value={typo.focus} onChange={(e) => setTypo({ ...typo, focus: e.target.value as any })}>
-            <option value="off">Off</option>
-            <option value="1line">1 line</option>
-            <option value="3lines">3 lines</option>
-            <option value="paragraph">Paragraph</option>
-          </select>
-        </div>
+      {/* Settings panel */}
+      <aside
+        className={`
+          fixed right-0 top-0 bottom-0 w-80 glass border-l border-[var(--border)]
+          transform transition-transform duration-300 ease-out z-50
+          ${open ? 'translate-x-0' : 'translate-x-full'}
+        `}
+        aria-label="Settings"
+      >
+        <div className="h-full flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+            <h2 className="font-semibold text-[var(--fg)]">Settings</h2>
+            <button
+              className="btn btn-ghost p-1"
+              onClick={() => setOpen(false)}
+              aria-label="Close settings"
+            >
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
 
-        <Slider label="Reading speed (WPM)" min={100} max={220} step={10} value={typo.wpm} onChange={(v) => setTypo({ ...typo, wpm: v })} />
+          {/* Section tabs */}
+          <div className="flex border-b border-[var(--border)]">
+            {(['presets', 'typography', 'focus', 'tts'] as const).map((section) => (
+              <button
+                key={section}
+                className={`flex-1 py-2 text-xs font-medium capitalize transition-colors
+                  ${activeSection === section
+                    ? 'text-[var(--accent)] border-b-2 border-[var(--accent)]'
+                    : 'text-[var(--fg-muted)] hover:text-[var(--fg)]'
+                  }`}
+                onClick={() => setActiveSection(section)}
+              >
+                {section}
+              </button>
+            ))}
+          </div>
 
-        <div className="pt-2 border-t border-slate-200/60">
-          <div className="text-xs text-slate-500 mb-1">Read Aloud (Web Speech API)</div>
-          <TtsControls defaultRate={Math.max(0.5, Math.min(1.2, typo.wpm / 220))} />
-        </div>
+          {/* Content */}
+          <div className="flex-1 overflow-auto p-4 space-y-4">
+            {/* Presets */}
+            {activeSection === 'presets' && (
+              <div className="space-y-3 animate-fade-in">
+                <p className="text-xs text-[var(--fg-muted)]">Quick presets for different reading styles:</p>
+                <PresetCard
+                  name="Relaxed"
+                  description="Comfortable reading with larger text"
+                  icon="🌙"
+                  onClick={() => applyPreset('relaxed')}
+                />
+                <PresetCard
+                  name="Focused"
+                  description="Distraction-free with bionic reading"
+                  icon="🎯"
+                  onClick={() => applyPreset('focused')}
+                />
+                <PresetCard
+                  name="Speed Reading"
+                  description="Optimized for fast consumption"
+                  icon="🚀"
+                  onClick={() => applyPreset('speed')}
+                />
+              </div>
+            )}
 
-        <div className="pt-2 border-t border-slate-200/60 grid grid-cols-2 gap-2">
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={typo.justify} onChange={(e)=> setTypo({ ...typo, justify: e.target.checked })} />
-            Justify text
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={typo.bionic} onChange={(e)=> setTypo({ ...typo, bionic: e.target.checked })} />
-            Bionic reading
-          </label>
+            {/* Typography */}
+            {activeSection === 'typography' && (
+              <div className="space-y-4 animate-fade-in">
+                <div>
+                  <label className="block text-xs text-[var(--fg-muted)] mb-2">Font Family</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(['serif', 'sans', 'opendyslexic'] as const).map((f) => (
+                      <button
+                        key={f}
+                        className={`btn text-xs capitalize ${typo.family === f ? 'btn-primary' : ''}`}
+                        onClick={() => setTypo({ ...typo, family: f })}
+                      >
+                        {f === 'opendyslexic' ? 'Dyslexic' : f}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <Slider
+                  label="Font Size"
+                  min={14} max={28} step={1}
+                  value={typo.size}
+                  onChange={(v) => setTypo({ ...typo, size: v })}
+                  unit="px"
+                />
+                <Slider
+                  label="Line Height"
+                  min={1.2} max={2.2} step={0.1}
+                  value={typo.lineHeight}
+                  onChange={(v) => setTypo({ ...typo, lineHeight: v })}
+                />
+                <Slider
+                  label="Paragraph Spacing"
+                  min={0} max={32} step={2}
+                  value={typo.paragraphSpacing}
+                  onChange={(v) => setTypo({ ...typo, paragraphSpacing: v })}
+                  unit="px"
+                />
+                <Slider
+                  label="Column Width"
+                  min={40} max={90} step={2}
+                  value={typo.measure}
+                  onChange={(v) => setTypo({ ...typo, measure: v })}
+                  unit="ch"
+                />
+                <div className="pt-2 border-t border-[var(--border)] space-y-2">
+                  <Toggle
+                    label="Justify Text"
+                    checked={typo.justify}
+                    onChange={(v) => setTypo({ ...typo, justify: v })}
+                  />
+                  <Toggle
+                    label="Bionic Reading"
+                    checked={typo.bionic}
+                    onChange={(v) => setTypo({ ...typo, bionic: v })}
+                    hint="Bold first part of words"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Focus Mode */}
+            {activeSection === 'focus' && (
+              <div className="space-y-4 animate-fade-in">
+                <p className="text-xs text-[var(--fg-muted)]">Choose how to highlight your reading position:</p>
+                <div className="space-y-2">
+                  {([
+                    { value: 'off', label: 'Off', desc: 'No focus highlighting' },
+                    { value: '1line', label: '1 Line', desc: 'Highlight single line under cursor' },
+                    { value: '3lines', label: '3 Lines', desc: 'Highlight 3 lines under cursor' },
+                    { value: 'paragraph', label: 'Paragraph', desc: 'Highlight current paragraph' },
+                    { value: 'spotlight', label: 'Spotlight', desc: 'Dim everything except current' },
+                  ] as const).map((opt) => (
+                    <button
+                      key={opt.value}
+                      className={`w-full text-left p-3 rounded-lg border transition-all
+                        ${typo.focus === opt.value
+                          ? 'border-[var(--accent)] bg-[var(--highlight-bg)]'
+                          : 'border-[var(--border)] hover:border-[var(--border-hover)]'
+                        }`}
+                      onClick={() => setTypo({ ...typo, focus: opt.value })}
+                    >
+                      <div className="font-medium text-sm text-[var(--fg)]">{opt.label}</div>
+                      <div className="text-xs text-[var(--fg-muted)]">{opt.desc}</div>
+                    </button>
+                  ))}
+                </div>
+                <Slider
+                  label="Reading Speed (WPM)"
+                  min={100} max={400} step={10}
+                  value={typo.wpm}
+                  onChange={(v) => setTypo({ ...typo, wpm: v })}
+                />
+              </div>
+            )}
+
+            {/* TTS */}
+            {activeSection === 'tts' && (
+              <div className="animate-fade-in">
+                <TtsControls defaultRate={Math.max(0.5, Math.min(1.2, typo.wpm / 220))} />
+              </div>
+            )}
+          </div>
+
+          {/* Reset button */}
+          <div className="p-4 border-t border-[var(--border)]">
+            <button
+              className="btn w-full"
+              onClick={() => setTypo(defaultTypo)}
+            >
+              Reset to Defaults
+            </button>
+          </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+
+      {/* Backdrop */}
+      {open && (
+        <div
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40"
+          onClick={() => setOpen(false)}
+        />
+      )}
+    </>
   );
 }
 
-function Slider({ label, min, max, step, value, onChange }: { label: string; min: number; max: number; step: number; value: number; onChange: (v: number) => void }) {
+function PresetCard({ name, description, icon, onClick }: {
+  name: string;
+  description: string;
+  icon: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className="w-full text-left p-4 rounded-lg border border-[var(--border)] hover:border-[var(--accent)] hover:bg-[var(--highlight-bg)] transition-all group"
+      onClick={onClick}
+    >
+      <div className="flex items-center gap-3">
+        <span className="text-2xl">{icon}</span>
+        <div>
+          <div className="font-medium text-[var(--fg)] group-hover:text-[var(--accent)]">{name}</div>
+          <div className="text-xs text-[var(--fg-muted)]">{description}</div>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function Slider({ label, min, max, step, value, onChange, unit = '' }: {
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+  value: number;
+  onChange: (v: number) => void;
+  unit?: string;
+}) {
   return (
     <div>
-      <label className="block text-xs text-slate-500 mb-1">{label}</label>
-      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="w-full" />
-      <div className="text-xs text-slate-500">{value}</div>
+      <div className="flex justify-between text-xs mb-2">
+        <label className="text-[var(--fg-muted)]">{label}</label>
+        <span className="font-medium text-[var(--fg)]">{value}{unit}</span>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full"
+      />
     </div>
+  );
+}
+
+function Toggle({ label, checked, onChange, hint }: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  hint?: string;
+}) {
+  return (
+    <label className="flex items-center gap-3 cursor-pointer group">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+      <div>
+        <span className="text-sm text-[var(--fg)] group-hover:text-[var(--accent)]">{label}</span>
+        {hint && <span className="text-xs text-[var(--fg-muted)] ml-2">({hint})</span>}
+      </div>
+    </label>
   );
 }
 
@@ -121,6 +374,7 @@ function TtsControls({ defaultRate }: { defaultRate: number }) {
   });
   const [rate, setRate] = useState<number>(defaultRate);
   const [speaking, setSpeaking] = useState<boolean>(false);
+  const support = detectTtsSupport();
 
   useEffect(() => {
     const loadVoices = () => setVoices(window.speechSynthesis.getVoices());
@@ -133,7 +387,7 @@ function TtsControls({ defaultRate }: { defaultRate: number }) {
     const text = sel?.toString() || document.querySelector('[aria-label="Reading content"]')?.textContent || '';
     if (!text) return;
     window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
+    const u = new SpeechSynthesisUtterance(text.slice(0, 500));
     u.rate = rate;
     u.voice = voices[voiceIndex];
     u.onend = () => setSpeaking(false);
@@ -151,38 +405,79 @@ function TtsControls({ defaultRate }: { defaultRate: number }) {
     }
   }, [voiceIndex, voices]);
 
-  return (
-    <div className="space-y-2">
-      <div className="flex gap-2">
-        <button className="px-2 py-1 border rounded" onClick={speaking ? pause : speakSelection}>{speaking ? 'Pause' : 'Play'}</button>
-        <button className="px-2 py-1 border rounded" onClick={resume}>Resume</button>
-        <button className="px-2 py-1 border rounded" onClick={stop}>Stop</button>
+  if (!support.available) {
+    return (
+      <div className="text-center py-8">
+        <div className="text-4xl mb-3">🔇</div>
+        <p className="text-sm text-[var(--fg-muted)]">Speech synthesis is not supported in this browser.</p>
       </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        <button
+          className={`btn flex-1 ${speaking ? '' : 'btn-primary'}`}
+          onClick={speaking ? pause : speakSelection}
+        >
+          {speaking ? (
+            <>
+              <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+              </svg>
+              Pause
+            </>
+          ) : (
+            <>
+              <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+              Play
+            </>
+          )}
+        </button>
+        <button className="btn" onClick={resume}>Resume</button>
+        <button className="btn" onClick={stop}>Stop</button>
+      </div>
+
       <div>
-        <label className="block text-xs text-slate-500 mb-1">Voice</label>
-        <select className="w-full border rounded px-2 py-1" value={voiceIndex} onChange={(e) => setVoiceIndex(Number(e.target.value))} disabled={!detectTtsSupport().available}>
+        <label className="block text-xs text-[var(--fg-muted)] mb-2">Voice</label>
+        <select
+          className="select w-full"
+          value={voiceIndex}
+          onChange={(e) => setVoiceIndex(Number(e.target.value))}
+        >
           {voices.map((v, i) => (
             <option key={v.name + i} value={i}>{v.name}</option>
           ))}
         </select>
-        <div className="text-xs text-slate-500 mt-1">{detectTtsSupport().available ? `${voices.length} voices available` : 'Speech synthesis not supported in this browser'}</div>
-        <button
-          className="mt-2 px-2 py-1 border rounded"
-          onClick={async () => {
-            try {
-              await speakTextOnce('Hello from Lumen Reader', { rate, voiceName: voices[voiceIndex]?.name });
-            } catch (e) {
-              alert((e as Error).message);
-            }
-          }}
-        >
-          Test Voice
-        </button>
+        <div className="text-xs text-[var(--fg-muted)] mt-1">{voices.length} voices available</div>
       </div>
-      <div>
-        <label className="block text-xs text-slate-500 mb-1">Rate</label>
-        <input type="range" min={0.5} max={2} step={0.1} value={rate} onChange={(e) => setRate(Number(e.target.value))} className="w-full" />
-      </div>
+
+      <Slider
+        label="Speech Rate"
+        min={0.5} max={2} step={0.1}
+        value={rate}
+        onChange={setRate}
+        unit="x"
+      />
+
+      <button
+        className="btn w-full"
+        onClick={async () => {
+          try {
+            await speakTextOnce('Hello from Lumen Reader. Your voice is ready.', { rate, voiceName: voices[voiceIndex]?.name });
+          } catch (e) {
+            alert((e as Error).message);
+          }
+        }}
+      >
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+        </svg>
+        Test Voice
+      </button>
     </div>
   );
 }

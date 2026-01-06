@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DocumentStore, StoredDoc, ExtractedContent, Bookmark } from '@/lib/store';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import DOMPurify from 'dompurify';
@@ -6,9 +6,14 @@ import { SearchBar } from './SearchBar';
 import { download, toMarkdown, toPlainText } from '@/lib/exporters';
 import { speakParagraphs, TtsController } from '@/lib/tts';
 
-type Props = { docId: string; store: DocumentStore; onOpenPdfView: () => void };
+type Props = {
+  docId: string;
+  store: DocumentStore;
+  onOpenPdfView: () => void;
+  spotlightMode?: boolean;
+};
 
-export function Reader({ docId, store, onOpenPdfView }: Props) {
+export function Reader({ docId, store, onOpenPdfView, spotlightMode = false }: Props) {
   const [doc, setDoc] = useState<StoredDoc | null>(null);
   const [content, setContent] = useState<ExtractedContent | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
@@ -19,12 +24,16 @@ export function Reader({ docId, store, onOpenPdfView }: Props) {
   });
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [ttsActive, setTtsActive] = useState(false);
+  const [ttsCurrentIndex, setTtsCurrentIndex] = useState<number | null>(null);
   const ttsRef = useRef<TtsController | null>(null);
-  const [focusMode, setFocusMode] = useState<'off' | '1line' | '3lines' | 'paragraph'>(() => {
+  const [focusMode, setFocusMode] = useState<'off' | '1line' | '3lines' | 'paragraph' | 'spotlight'>(() => {
     try { return JSON.parse(localStorage.getItem('typography') || '{}').focus || 'off'; } catch { return 'off'; }
   });
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [typoPrefs, setTypoPrefs] = useState<{ justify?: boolean; bionic?: boolean }>({});
+  const [showStats, setShowStats] = useState(false);
+  const [wordsRead, setWordsRead] = useState(0);
+  const [readingStartTime] = useState(Date.now());
 
   useEffect(() => {
     let mounted = true;
@@ -56,6 +65,9 @@ export function Reader({ docId, store, onOpenPdfView }: Props) {
   }, [docId, store]);
 
   const blocks = content?.blocks ?? [];
+  const totalWords = useMemo(() =>
+    blocks.reduce((a, b) => a + (b.text.split(/\s+/).length), 0), [blocks]);
+
   const rowVirtualizer = useVirtualizer({
     count: blocks.length,
     getScrollElement: () => parentRef.current,
@@ -65,7 +77,7 @@ export function Reader({ docId, store, onOpenPdfView }: Props) {
 
   useEffect(() => {
     if (scrollToIndex != null) {
-      rowVirtualizer.scrollToIndex(scrollToIndex, { align: 'center' });
+      rowVirtualizer.scrollToIndex(scrollToIndex, { align: 'center', behavior: 'smooth' });
       setScrollToIndex(null);
     }
   }, [scrollToIndex]);
@@ -96,6 +108,9 @@ export function Reader({ docId, store, onOpenPdfView }: Props) {
         if (it.start <= middle && middle <= it.end) { idx = it.index; break; }
       }
       setCurrentIndex(idx);
+      // Estimate words read
+      const wordsBeforeCurrent = blocks.slice(0, idx).reduce((a, b) => a + b.text.split(/\s+/).length, 0);
+      setWordsRead(wordsBeforeCurrent);
     };
     el.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
@@ -104,13 +119,54 @@ export function Reader({ docId, store, onOpenPdfView }: Props) {
 
   useEffect(() => {
     if (!doc) return;
-    store.updateProgress(doc.id, { progress, lastParagraphIndex: currentIndex, lastOpened: Date.now() }).catch(() => {});
+    store.updateProgress(doc.id, { progress, lastParagraphIndex: currentIndex, lastOpened: Date.now() }).catch(() => { });
   }, [progress, currentIndex]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      switch (e.key) {
+        case 'ArrowDown':
+        case 'j':
+          e.preventDefault();
+          setScrollToIndex(Math.min(currentIndex + 1, blocks.length - 1));
+          break;
+        case 'ArrowUp':
+        case 'k':
+          e.preventDefault();
+          setScrollToIndex(Math.max(currentIndex - 1, 0));
+          break;
+        case ' ':
+          e.preventDefault();
+          if (ttsActive) {
+            ttsRef.current?.pause();
+          } else {
+            speakFrom(currentIndex);
+          }
+          break;
+        case 'Escape':
+          ttsRef.current?.stop();
+          setTtsActive(false);
+          break;
+        case 'b':
+          if (e.metaKey || e.ctrlKey) {
+            e.preventDefault();
+            handleBookmark();
+          }
+          break;
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [currentIndex, blocks.length, ttsActive]);
 
   // TTS from index
   const speakFrom = async (index: number) => {
     if (!blocks.length) return;
     ttsRef.current?.stop();
+    setTtsCurrentIndex(index);
     const paragraphs = blocks.slice(index).filter(b => b.kind === 'p').map(b => b.text).slice(0, 50);
     try {
       const ctrl = await speakParagraphs(paragraphs, { rate: Math.max(0.5, Math.min(1.2, wpm / 220)) });
@@ -118,7 +174,13 @@ export function Reader({ docId, store, onOpenPdfView }: Props) {
       setTtsActive(true);
     } catch {
       setTtsActive(false);
+      setTtsCurrentIndex(null);
     }
+  };
+
+  const handleBookmark = async () => {
+    await store.addBookmark(docId, currentIndex);
+    setBookmarks(await store.listBookmarks(docId));
   };
 
   // Keep focus mode in sync
@@ -132,40 +194,134 @@ export function Reader({ docId, store, onOpenPdfView }: Props) {
     } catch { /* noop */ }
   }, [localStorage.getItem('typography')]);
 
+  const readingTimeElapsed = Math.floor((Date.now() - readingStartTime) / 1000 / 60);
+  const pagesPerHour = readingTimeElapsed > 0
+    ? Math.round((wordsRead / 250) / (readingTimeElapsed / 60))
+    : 0;
+
   return (
-    <div className="h-full overflow-hidden">
-      <div className="border-b border-slate-200/60 px-4 py-2 text-sm text-slate-600 flex gap-4 items-center">
-        <span className="truncate">{doc?.name}</span>
-        <span>Pages: {doc?.pages ?? '—'}</span>
-        <span className="ml-auto">Extraction: {doc?.extractionStatus ?? 'pending'}</span>
-        <button className="ml-2 underline" onClick={onOpenPdfView}>Open PDF View</button>
-        <div className="ml-4">
-          <SearchBar content={content} onJump={(i) => setScrollToIndex(i)} />
+    <div className="h-full overflow-hidden flex flex-col bg-[var(--bg)]">
+      {/* Enhanced toolbar */}
+      <div className="glass border-b border-[var(--border)] px-5 py-3 flex items-center gap-4 animate-fade-in">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="font-medium truncate max-w-[200px] text-[var(--fg)]">{doc?.name}</span>
+          <span className="stat-badge">
+            <svg className="stat-badge-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            {doc?.pages ?? '—'} pages
+          </span>
+          <span className={`stat-badge ${doc?.extractionStatus === 'done' ? 'text-green-500' : ''}`}>
+            {doc?.extractionStatus === 'done' ? '✓ Ready' : doc?.extractionStatus === 'processing' ? '⏳ Processing...' : '○ Pending'}
+          </span>
         </div>
-        <div className="ml-4 flex items-center gap-3">
-          <div className="w-48 h-1 bg-slate-200 rounded overflow-hidden" aria-label="Reading progress">
-            <div className="h-full bg-brand-600" style={{ width: `${Math.round(progress * 100)}%` }} />
+
+        <div className="flex-1" />
+
+        {/* Reading progress */}
+        <div className="flex items-center gap-3">
+          <CircularProgress progress={progress} />
+          <div className="text-sm">
+            <div className="font-medium text-[var(--fg)]">{Math.round(progress * 100)}%</div>
+            <div className="text-xs text-[var(--fg-muted)]">
+              <TimeEstimate words={Math.max(1, totalWords - wordsRead)} wpm={wpm} />
+            </div>
           </div>
-          <span className="text-xs text-slate-500">{Math.round(progress * 100)}%</span>
-          <TimeEstimate words={Math.max(1, blocks.reduce((a, b) => a + (b.text.split(/\s+/).length), 0))} wpm={wpm} progress={progress} />
         </div>
-        <div className="ml-4 flex items-center gap-2">
-          <button className="px-2 py-1 border rounded" onClick={() => content && download('document.txt', toPlainText(content))}>Export .txt</button>
-          <button className="px-2 py-1 border rounded" onClick={() => content && download('document.md', toMarkdown(content), 'text/markdown')}>Export .md</button>
-          <button className="px-2 py-1 border rounded" onClick={() => ttsRef.current?.pause()} disabled={!ttsActive}>Pause</button>
-          <button className="px-2 py-1 border rounded" onClick={() => ttsRef.current?.resume()} disabled={!ttsActive}>Resume</button>
-          <button className="px-2 py-1 border rounded" onClick={() => { ttsRef.current?.stop(); setTtsActive(false); }} disabled={!ttsActive}>Stop</button>
-          <button className="px-2 py-1 border rounded" onClick={async () => { await store.addBookmark(docId, currentIndex); setBookmarks(await store.listBookmarks(docId)); }}>Bookmark</button>
+
+        {/* Stats toggle */}
+        <button
+          className={`btn btn-ghost ${showStats ? 'bg-[var(--highlight-bg)]' : ''}`}
+          onClick={() => setShowStats(!showStats)}
+          title="Reading Statistics"
+        >
+          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+        </button>
+
+        <SearchBar content={content} onJump={(i) => setScrollToIndex(i)} />
+      </div>
+
+      {/* Stats panel (collapsible) */}
+      {showStats && (
+        <div className="glass border-b border-[var(--border)] px-5 py-3 flex items-center gap-6 text-sm animate-fade-in">
+          <StatItem icon="📖" label="Words Read" value={wordsRead.toLocaleString()} />
+          <StatItem icon="📚" label="Total Words" value={totalWords.toLocaleString()} />
+          <StatItem icon="⏱️" label="Time" value={`${readingTimeElapsed}m`} />
+          <StatItem icon="🚀" label="Speed" value={`${pagesPerHour} pages/hr`} />
+          <StatItem icon="🎯" label="Current Para" value={`${currentIndex + 1} / ${blocks.length}`} />
+        </div>
+      )}
+
+      {/* Action bar */}
+      <div className="border-b border-[var(--border)] px-5 py-2 flex items-center gap-2 bg-[var(--bg-secondary)]">
+        <button className="btn" onClick={onOpenPdfView}>
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+          PDF View
+        </button>
+        <div className="w-px h-6 bg-[var(--border)]" />
+        <button className="btn" onClick={() => content && download('document.txt', toPlainText(content))}>
+          Export .txt
+        </button>
+        <button className="btn" onClick={() => content && download('document.md', toMarkdown(content), 'text/markdown')}>
+          Export .md
+        </button>
+        <div className="w-px h-6 bg-[var(--border)]" />
+        <TtsControls
+          ttsActive={ttsActive}
+          onPlay={() => speakFrom(currentIndex)}
+          onPause={() => ttsRef.current?.pause()}
+          onResume={() => ttsRef.current?.resume()}
+          onStop={() => { ttsRef.current?.stop(); setTtsActive(false); setTtsCurrentIndex(null); }}
+        />
+        <div className="w-px h-6 bg-[var(--border)]" />
+        <button
+          className="btn btn-ghost"
+          onClick={handleBookmark}
+          title="Add Bookmark (⌘B)"
+        >
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+          </svg>
+          Bookmark
+        </button>
+        <div className="ml-auto flex items-center gap-2 text-xs text-[var(--fg-muted)]">
+          <span className="kbd">↑↓</span> Navigate
+          <span className="kbd">Space</span> TTS
+          <span className="kbd">Esc</span> Stop
         </div>
       </div>
-      <div ref={parentRef} className="h-[calc(100%-40px)] overflow-auto">
-        <div className="max-w-[var(--measure,70ch)] mx-auto px-6 py-6" style={{
-          fontSize: 'var(--font-size, 18px)',
-          lineHeight: 'var(--line-height, 1.6)',
-          fontFamily: 'var(--reader-font, ui-sans-serif)',
-        }}>
+
+      {/* Reading content */}
+      <div ref={parentRef} className="flex-1 overflow-auto relative">
+        {/* Spotlight overlay */}
+        {(focusMode === 'spotlight' || focusMode === 'paragraph') && (
+          <div
+            className={`spotlight-overlay ${focusMode === 'spotlight' ? 'active' : ''}`}
+            style={{ '--spotlight-y': `${50}%` } as React.CSSProperties}
+          />
+        )}
+
+        <div
+          className="max-w-[var(--measure,70ch)] mx-auto px-8 py-10 reading-content"
+          style={{
+            fontSize: 'var(--font-size, 18px)',
+            lineHeight: 'var(--line-height, 1.7)',
+            fontFamily: 'var(--reader-font, Georgia, serif)',
+          }}
+        >
           {blocks.length === 0 && (
-            <div className="text-slate-500 text-center py-8">Extracting text… If this takes too long, open PDF View fallback in settings.</div>
+            <div className="text-center py-16 animate-fade-in">
+              <div className="spinner mx-auto mb-4" />
+              <p className="text-[var(--fg-muted)]">Extracting text from PDF...</p>
+              <p className="text-xs text-[var(--fg-muted)] mt-2">
+                Taking too long? Try the PDF View fallback.
+              </p>
+            </div>
           )}
           <div
             style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: 'relative' }}
@@ -175,17 +331,39 @@ export function Reader({ docId, store, onOpenPdfView }: Props) {
               const b = blocks[item.index];
               const Tag = b.kind === 'h' ? (`h${b.level ?? 2}` as any) : 'p';
               const innerHtml = DOMPurify.sanitize(typoPrefs.bionic ? bionicTransform(b.text) : b.text);
+              const isCurrent = item.index === currentIndex;
+              const isTtsCurrent = ttsCurrentIndex !== null && item.index === ttsCurrentIndex;
+
+              const dimmed = focusMode === 'spotlight' && !isCurrent;
+              const focused = (focusMode === 'paragraph' || focusMode === 'spotlight') && isCurrent;
+
               return (
                 <div
                   key={item.key}
                   ref={rowVirtualizer.measureElement}
-                  className={`absolute left-0 right-0 px-1 ${focusMode === 'paragraph' && item.index === currentIndex ? 'bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] rounded-sm' : ''}`}
-                  style={{ transform: `translateY(${item.start}px)`, top: 0, paddingBottom: b.kind === 'h' ? '0.6em' : 'var(--paragraph-spacing, 12px)', boxSizing: 'border-box' }}
+                  className={`
+                    absolute left-0 right-0 px-2
+                    reading-paragraph
+                    ${focused ? 'focused' : ''}
+                    ${dimmed ? 'dimmed' : ''}
+                    ${isTtsCurrent ? 'tts-active' : ''}
+                  `}
+                  style={{
+                    transform: `translateY(${item.start}px)`,
+                    top: 0,
+                    paddingBottom: b.kind === 'h' ? '0.6em' : 'var(--paragraph-spacing, 16px)',
+                    boxSizing: 'border-box',
+                    transition: 'all 0.2s ease-out'
+                  }}
                   data-index={item.index}
                 >
                   <Tag
                     onClick={() => speakFrom(item.index)}
-                    style={{ textAlign: typoPrefs.justify ? 'justify' : 'start' }}
+                    style={{
+                      textAlign: typoPrefs.justify ? 'justify' : 'start',
+                      cursor: 'pointer'
+                    }}
+                    className={b.kind === 'h' ? 'font-bold text-[var(--fg)]' : 'text-[var(--fg)]'}
                     dangerouslySetInnerHTML={{ __html: innerHtml }}
                   />
                 </div>
@@ -195,17 +373,124 @@ export function Reader({ docId, store, onOpenPdfView }: Props) {
         </div>
         <ReadingRuler parentRef={parentRef} focusMode={focusMode} />
       </div>
+
+      {/* Progress bar at bottom */}
+      <div className="h-1 bg-[var(--border)]">
+        <div
+          className="h-full progress-bar-fill"
+          style={{ width: `${Math.round(progress * 100)}%` }}
+        />
+      </div>
     </div>
   );
 }
 
-function TimeEstimate({ words, wpm, progress }: { words: number; wpm: number; progress: number }) {
-  const remaining = Math.max(0, 1 - progress) * words;
-  const minutes = Math.ceil(remaining / Math.max(120, wpm));
-  return <span className="text-xs text-slate-500">~{minutes} min left</span>;
+function CircularProgress({ progress }: { progress: number }) {
+  const radius = 16;
+  const stroke = 3;
+  const normalizedRadius = radius - stroke;
+  const circumference = normalizedRadius * 2 * Math.PI;
+  const strokeDashoffset = circumference - progress * circumference;
+
+  return (
+    <svg height={radius * 2} width={radius * 2} className="progress-ring">
+      <circle
+        className="progress-ring-bg"
+        strokeWidth={stroke}
+        fill="transparent"
+        r={normalizedRadius}
+        cx={radius}
+        cy={radius}
+      />
+      <circle
+        className="progress-ring-circle"
+        strokeWidth={stroke}
+        strokeDasharray={`${circumference} ${circumference}`}
+        style={{ strokeDashoffset }}
+        fill="transparent"
+        r={normalizedRadius}
+        cx={radius}
+        cy={radius}
+      />
+    </svg>
+  );
 }
 
-function ReadingRuler({ parentRef, focusMode }: { parentRef: React.RefObject<HTMLDivElement>; focusMode: 'off'|'1line'|'3lines'|'paragraph' }) {
+function StatItem({ icon, label, value }: { icon: string; label: string; value: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span>{icon}</span>
+      <div>
+        <div className="text-xs text-[var(--fg-muted)]">{label}</div>
+        <div className="font-medium text-[var(--fg)]">{value}</div>
+      </div>
+    </div>
+  );
+}
+
+function TtsControls({ ttsActive, onPlay, onPause, onResume, onStop }: {
+  ttsActive: boolean;
+  onPlay: () => void;
+  onPause: () => void;
+  onResume: () => void;
+  onStop: () => void;
+}) {
+  const [paused, setPaused] = useState(false);
+
+  return (
+    <div className="flex items-center gap-1">
+      {!ttsActive ? (
+        <button className="btn btn-primary" onClick={onPlay}>
+          <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+          Read Aloud
+        </button>
+      ) : (
+        <>
+          {paused ? (
+            <button
+              className="btn"
+              onClick={() => { onResume(); setPaused(false); }}
+            >
+              <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+              Resume
+            </button>
+          ) : (
+            <button
+              className="btn"
+              onClick={() => { onPause(); setPaused(true); }}
+            >
+              <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+              </svg>
+              Pause
+            </button>
+          )}
+          <button
+            className="btn btn-ghost"
+            onClick={() => { onStop(); setPaused(false); }}
+          >
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M6 6h12v12H6z" />
+            </svg>
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+function TimeEstimate({ words, wpm }: { words: number; wpm: number }) {
+  const minutes = Math.ceil(words / Math.max(120, wpm));
+  if (minutes < 1) return <span>Less than a minute</span>;
+  if (minutes === 1) return <span>~1 min left</span>;
+  return <span>~{minutes} min left</span>;
+}
+
+function ReadingRuler({ parentRef, focusMode }: { parentRef: React.RefObject<HTMLDivElement>; focusMode: string }) {
   const [y, setY] = useState<number | null>(null);
   useEffect(() => {
     const el = parentRef.current;
@@ -216,16 +501,15 @@ function ReadingRuler({ parentRef, focusMode }: { parentRef: React.RefObject<HTM
     el.addEventListener('mouseleave', onLeave);
     return () => { el.removeEventListener('mousemove', onMove); el.removeEventListener('mouseleave', onLeave); };
   }, [parentRef]);
-  if (y == null || focusMode === 'off' || focusMode === 'paragraph') return null;
+  if (y == null || focusMode === 'off' || focusMode === 'paragraph' || focusMode === 'spotlight') return null;
   const size = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--font-size')) || 18;
-  const lh = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--line-height')) || 1.6;
+  const lh = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--line-height')) || 1.7;
   const lines = focusMode === '1line' ? 1 : 3;
   const height = Math.round(size * lh * lines);
   return <div className="ruler" style={{ top: y - height / 2, height }} aria-hidden />;
 }
 
 function bionicTransform(html: string): string {
-  // Simple bionic reading: bold first ~40% of each word
   const decode = (s: string) => { const el = document.createElement('textarea'); el.innerHTML = s; return el.value; };
   const text = decode(html);
   const out = text.replace(/([A-Za-zÀ-ÖØ-öø-ÿ]{3,})/g, (w) => {

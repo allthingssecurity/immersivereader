@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #0b0e14;
+  --fg: #e6e6e6;
+  --panel: #121722;
+  --muted: #9aa0aa;
+  --accent: #2a98ff;
+}
+
+.theme-light {
+  --bg: #ffffff;
+  --fg: #0f172a;
+  --panel: #f5f7fb;
+  --muted: #55617a;
+  --accent: #0f7ae5;
+}
+
+.theme-sepia {
+  --bg: #f4ecd8;
+  --fg: #4a3b2a;
+  --panel: #efe6d1;
+  --muted: #6a5c4d;
+  --accent: #b7791f;
+}
+
+html, body, #root { height: 100%; }
+body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
+
+.ruler {
+  position: fixed;
+  left: 0; right: 0;
+  height: 2rem;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  pointer-events: none;
+}
+

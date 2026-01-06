@@ -27,17 +27,17 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm install
-        working-directory: ./lumen-reader
+        working-directory: ./
       - name: Build
         run: |
           npm run build
           # SPA fallback for GitHub Pages
           cp dist/index.html dist/404.html
-        working-directory: ./lumen-reader
+        working-directory: ./
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: lumen-reader/dist
+          path: dist
 
   deploy:
     environment:

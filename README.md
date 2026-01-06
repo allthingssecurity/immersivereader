@@ -24,6 +24,11 @@ Setup
 - npm run dev
 - npm run build; npm run preview
 
+Deployment (GitHub Pages)
+- Repo: allthingssecurity/immersivereader
+- Pages URL: https://allthingssecurity.github.io/immersivereader/
+- Built via GitHub Actions on pushes to main.
+
 Security
 - Treats PDF content as untrusted; sanitized HTML before inserting into DOM (DOMPurify).
 - No network calls for parsing, TTS, or translation.
@@ -42,4 +47,3 @@ Commercial readiness (next steps)
 - Optional cloud sync of library and reading progress via user-selected storage (self-hosted).
 - Add E2E encryption if syncing.
 - Robust PDF fallback canvas viewer; advanced extraction heuristics; TOC builder.
-
